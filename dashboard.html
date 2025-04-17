@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FTC Wallet Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f7fa;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    .header {
+      background-color: #00274d;
+      color: white;
+      padding: 20px 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header .left {
+      display: flex;
+      align-items: center;
+    }
+    .header img { height: 50px; margin-right: 15px; }
+    .header h1 { font-size: 22px; }
+    .dropdowns {
+      display: flex;
+      gap: 15px;
+      margin-right: 20px;
+    }
+    .dropdown select {
+      padding: 6px;
+      font-size: 14px;
+      border-radius: 4px;
+      border: none;
+    }
+    .user-area { text-align: right; }
+    .user-name { font-size: 16px; margin-bottom: 4px; }
+    .account-number { font-size: 14px; color: #ffeb3b; margin-bottom: 8px; }
+    .logout-btn {
+      background: #ff4d4d;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      font-size: 14px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .logout-btn:hover { background: #c62828; }
+    .content {
+      flex: 1;
+      max-width: 800px;
+      margin: 30px auto;
+      padding: 30px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #1a1a2e;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin: 20px 0 10px;
+      color: #1a1a2e;
+    }
+    .info {
+      margin-bottom: 12px;
+      font-size: 16px;
+      color: #333;
+      padding: 8px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border-left: 4px solid #1a1a2e;
+    }
+    .apply-btn {
+      background: linear-gradient(to right, #1a1a2e, #2e2e55);
+      color: white;
+      border: none;
+      padding: 14px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      margin-top: 15px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .apply-btn:hover {
+      background: linear-gradient(to right, #2e2e55, #1a1a2e);
+    }
+    .loader { display: none; margin: 15px 0; text-align: center; }
+    .loader img { height: 40px; }
+    .footer {
+      text-align: center;
+      padding: 15px;
+      background-color: #00274d;
+      font-size: 13px;
+      color: white;
+    }
+    .msg {
+      text-align: center;
+      color: green;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+<div class="header">
+  <div class="left">
+    <img src="FTC.png" alt="FTC Logo">
+    <h1>FTC Secure Wallet Department</h1>
+  </div>
+  <div class="dropdowns">
+    <div class="dropdown">
+      <select id="accountSummary">
+        <option selected disabled>Account Summary</option>
+      </select>
+    </div>
+    <div class="dropdown">
+      <select id="caseSummary">
+        <option selected disabled>Case Summary</option>
+      </select>
+    </div>
+  </div>
+  <div class="user-area">
+    <div class="user-name" id="usernameDisplay">Welcome, User</div>
+    <div class="account-number" id="accountNumberDisplay">Account #: SW-XXXXXXXXXX</div>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<div class="content">
+  <h2>Wallet Overview Chart</h2>
+  <canvas id="walletChart" style="width:100%;max-width:700px;margin-bottom:30px;"></canvas>
+
+  <h2>Secure Wallet Account Information</h2>
+  <div class="info"><strong>Account Number:</strong> <span id="displayAccountNumber">SW-XXXXXXXXXX</span></div>
+  <div class="info"><strong>Account Balance:</strong> <span id="accountBalance">$0.00</span></div>
+  <div class="info"><strong>Account Type:</strong> Secure Federal Wallet</div>
+  <div class="info"><strong>Account Created:</strong> <span id="accountCreatedDate">--</span></div>
+
+  <h2>Apply for Secure Wallet Account Number</h2>
+  <button class="apply-btn" onclick="applyAccount()">Apply for a New Secure Wallet Account Number</button>
+  <div class="loader" id="loader">
+    <img src="https://i.gifer.com/ZZ5H.gif" alt="Loading...">
+    <p>Processing your request...</p>
+  </div>
+  <div class="msg" id="messageBox"></div>
+</div>
+
+<script>
+  const fullname = localStorage.getItem("fullname");
+  const username = localStorage.getItem("username");
+  const accountNumber = localStorage.getItem("walletAccount");
+  const selectedCases = localStorage.getItem("selectedCases");
+  const issueDetails = localStorage.getItem("issueDetails");
+  const createdDate = localStorage.getItem("accountCreatedDate");
+
+  document.getElementById("usernameDisplay").textContent = `Welcome, ${fullname || "User"}`;
+  document.getElementById("accountNumberDisplay").textContent = accountNumber ? `Account #: ${accountNumber}` : "Account #: SW-XXXXXXXXXX";
+  document.getElementById("displayAccountNumber").textContent = accountNumber || "SW-XXXXXXXXXX";
+  document.getElementById("accountCreatedDate").textContent = createdDate || "--";
+
+  const summarySelect = document.getElementById("accountSummary");
+  [
+    `Full Name: ${fullname}`,
+    `Username: ${username}`,
+    `DOB: ${localStorage.getItem("dob")}`,
+    `Email: ${localStorage.getItem("email")}`,
+    `Phone: ${localStorage.getItem("phone")}`
+  ].forEach(text => {
+    const option = document.createElement("option");
+    option.textContent = text;
+    summarySelect.appendChild(option);
+  });
+
+  const caseSelect = document.getElementById("caseSummary");
+  [
+    selectedCases || "No Cases Applied",
+    issueDetails || "No Issue Described"
+  ].forEach(text => {
+    const option = document.createElement("option");
+    option.textContent = text;
+    caseSelect.appendChild(option);
+  });
+
+  const ctx = document.getElementById('walletChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+      datasets: [{
+        label: 'Wallet Balance History',
+        data: [0, 100, 250, 400, 300, 500],
+        borderColor: '#1a1a2e',
+        backgroundColor: 'rgba(26,26,46,0.1)',
+        tension: 0.3,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+
+  function logout() {
+    alert("You have been logged out.");
+    window.location.href = "index.html";
+  }
+
+  function applyAccount() {
+    const existing = localStorage.getItem("walletAccount");
+    if (existing) {
+      document.getElementById("messageBox").textContent = "You are already registered with a Secure Wallet Account Number. Cannot apply again.";
+      return;
+    }
+    document.getElementById("loader").style.display = "block";
+    document.getElementById("messageBox").textContent = "";
+
+    setTimeout(() => {
+      const newAcc = "SW-" + Math.floor(1000000000 + Math.random() * 9000000000);
+      localStorage.setItem("walletAccount", newAcc);
+      document.getElementById("loader").style.display = "none";
+      document.getElementById("accountNumberDisplay").textContent = `Account #: ${newAcc}`;
+      document.getElementById("displayAccountNumber").textContent = newAcc;
+      document.getElementById("accountBalance").textContent = "$0.00";
+      const now = new Date();
+      const formatted = now.toLocaleString();
+      localStorage.setItem("accountCreatedDate", formatted);
+      document.getElementById("accountCreatedDate").textContent = formatted;
+      document.getElementById("messageBox").textContent = "New Secure Wallet Account Number assigned successfully!";
+    }, 10000);
+  }
+</script>
+
+<div class="footer">
+  &copy; 2025 Federal Trade Commission. All Rights Reserved.
+</div>
